@@ -985,6 +985,16 @@ def generateData(size):
                     y[key] = 1
         if x != '':
             x = x[: len(x) - 1]
+            sl = x.split(',')
+            random.shuffle(sl)
+            x = ''
+            for s in sl:
+                x += s
+                p = random.choice([0, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+                if (p == 1):
+                    x += ','
+            if x[len(x) - 1] == ',':
+                x = x[: len(x) - 1]
             X.append(x)
             Y.append(y)
     return X, Y
