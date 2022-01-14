@@ -7,6 +7,7 @@ from model import BertMultiClassifier, BertBiLSTM
 from dataset import NLQDataset
 from tqdm import tqdm
 import pickle
+import numpy as np
 from sklearn.metrics import accuracy_score, classification_report
 
 BATCH_SIZE = 32
@@ -58,6 +59,32 @@ def train_and_eval(model, train_loader, test_loader, optimizer, criterion, devic
         print("{0:'教育经历', 1:'地区', 2:'年龄', 3:'性别', 4:'工作经历', 5: 其余, 6: <CLS>(bert头), 7: <SEP>(bert尾) 8: <PAD>(bert填充)}")
         print(classification_report(val_pred, val_true, digits=4))
 
+    # 输入一个句子
+    sentence = input()
+    model.eval()
+    with torch.no_grad():
+        tokenizer = BertTokenizer.from_pretrained('chinese_wwm_ext_pytorch')
+        token = tokenizer(sentence, add_special_tokens=True, padding='max_length', truncation=True, max_length=64)
+        input_ids = torch.tensor(np.array(token['input_ids'])).reshape((1, 64)).to(device)
+        token_type_ids = torch.tensor(np.array(token['token_type_ids'])).reshape((1, 64)).to(device)
+        attention_mask = torch.tensor(np.array(token['attention_mask'])).reshape((1, 64)).to(device)
+        out = model(input_ids, token_type_ids, attention_mask)
+        out = out.cpu().numpy().tolist()
+        # (B, L, class) -> (L, )
+        y_pred = []
+        for i in out:
+            for j in i:
+                y_pred.append(j.index(max(j)))
+        y_pred = y_pred[1: len(sentence)+1]
+        print("input sentecne:", sentence)
+        resultDic = {0: '', 1: '', 2: '', 3:'', 4:'', 5: ''}
+        for i in range(len(y_pred)):
+            resultDic[y_pred[i]] += sentence[i]
+        for key, value in resultDic.items():
+            if (key != 5):
+                print(str(key)+':',value)
+
+
 def main():
     trainData = pickle.load(open("NLQ/trainData.pkl", 'rb'), encoding='utf-8')
     testData = pickle.load(open("NLQ/testData.pkl", 'rb'), encoding='utf-8')
@@ -72,8 +99,8 @@ def main():
 
     train_and_eval(model, train_loader, test_loader, optimizer, criterion, device, EPOCHS)
 
-    # with open('NLQ/model.pkl', 'wb') as f:
-    #     pickle.dump(model, f)
+    with open('NLQ/model.pkl', 'wb') as f:
+        pickle.dump(model, f)
 
 if __name__ == '__main__':
     main()
